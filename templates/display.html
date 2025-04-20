@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نمایش قرعه‌کشی</title>
+    <!-- Bootstrap RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.rtl.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Vazirmatn Font -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <!-- Anime.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+            background-color: #071530;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            color: white;
+        }
+        
+        .display-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header {
+            position: absolute;
+            top: 5%;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .title {
+            font-size: 3.5rem;
+            font-weight: bold;
+            text-shadow: 0px 0px 20px rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        .lottery-box {
+            background: rgba(0, 40, 100, 0.8);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.2);
+            width: 80%;
+            max-width: 900px;
+            text-align: center;
+            position: relative;
+            z-index: 5;
+            transition: all 0.5s ease;
+        }
+        
+        .idle-message {
+            font-size: 2rem;
+            color: #adb5bd;
+        }
+        
+        .number-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .phone-number {
+            font-size: 2.8rem;
+            font-weight: bold;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+        
+        .winner {
+            font-size: 3.5rem;
+            color: #ffc107;
+            text-shadow: 0px 0px 20px rgba(255, 193, 7, 0.7);
+            animation: pulse 1.5s infinite;
+            opacity: 1;
+        }
+        
+        .background-numbers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .floating-number {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+            z-index: 1;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 4;
+            pointer-events: none;
+            display: none;
+        }
+        
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 30px;
+            background: #ffd700;
+            top: -10%;
+            opacity: 0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .winner-announcement {
+            font-size: 2.2rem;
+            margin-top: 20px;
+            color: #e9ecef;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+        
+        .fullscreen-btn {
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .fullscreen-btn:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="display-container">
+        <div class="header">
+            <h1 class="title">
+                <i class="fas fa-gift"></i>
+                قرعه‌کشی
+            </h1>
+        </div>
+        
+        <div class="lottery-box">
+            <div id="idleMessage" class="idle-message">
+                منتظر شروع قرعه‌کشی...
+            </div>
+            
+            <div id="numberContainer" class="number-container" style="display: none;"></div>
+            
+            <div id="winnerAnnouncement" class="winner-announcement">
+                تبریک به برنده قرعه‌کشی
+            </div>
+        </div>
+        
+        <div class="background-numbers" id="backgroundNumbers"></div>
+        
+        <div class="confetti" id="confetti"></div>
+        
+        <div class="controls">
+            <button id="fullscreenBtn" class="fullscreen-btn">
+                <i class="fas fa-expand"></i>
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+        const idleMessage = document.getElementById('idleMessage');
+        const numberContainer = document.getElementById('numberContainer');
+        const winnerAnnouncement = document.getElementById('winnerAnnouncement');
+        const backgroundNumbers = document.getElementById('backgroundNumbers');
+        const confetti = document.getElementById('confetti');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        
+        // Variables
+        let animationParticipants = [];
+        let winners = [];
+        let animationRunning = false;
+        let currentBackgroundNumbers = [];
+        
+        // Initialize background numbers
+        initBackgroundNumbers();
+        
+        // Fullscreen button event
+        fullscreenBtn.addEventListener('click', toggleFullScreen);
+        
+        // Listen for messages from the admin page
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'startDraw') {
+                animationParticipants = event.data.animationParticipants;
+                winners = event.data.winners;
+                startDrawAnimation();
+            }
+        });
+        
+        // Initialize floating background numbers
+        function initBackgroundNumbers() {
+            for (let i = 0; i < 25; i++) {
+                const number = document.createElement('div');
+                number.classList.add('floating-number');
+                
+                // Random size between 1rem and 5rem
+                const size = 1 + Math.random() * 4;
+                number.style.fontSize = `${size}rem`;
+                
+                // Random position
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                number.style.left = `${left}%`;
+                number.style.top = `${top}%`;
+                
+                // Random opacity
+                number.style.opacity = 0.05 + Math.random() * 0.1;
+                
+                // Set content as a random phone-like number
+                number.textContent = generateRandomPhoneNumber();
+                
+                backgroundNumbers.appendChild(number);
+                currentBackgroundNumbers.push(number);
+                
+                // Animate the floating effect
+                animateBackgroundNumber(number);
+            }
+        }
+        
+        // Animate background number with random movement
+        function animateBackgroundNumber(element) {
+            const xMovement = -15 + Math.random() * 30;
+            const yMovement = -15 + Math.random() * 30;
+            const duration = 20000 + Math.random() * 30000;
+            
+            anime({
+                targets: element,
+                translateX: xMovement,
+                translateY: yMovement,
+                rotate: Math.random() * 360,
+                duration: duration,
+                easing: 'easeInOutSine',
+                complete: function() {
+                    // Reset position and start a new animation
+                    element.style.left = `${Math.random() * 100}%`;
+                    element.style.top = `${Math.random() * 100}%`;
+                    animateBackgroundNumber(element);
+                }
+            });
+        }
+        
+        // Generate random phone-like number for background
+        function generateRandomPhoneNumber() {
+            let number = '09';
+            for (let i = 0; i < 9; i++) {
+                number += Math.floor(Math.random() * 10);
+            }
+            return number;
+        }
+        
+        // Start the drawing animation
+        function startDrawAnimation() {
+            if (animationRunning) return;
+            animationRunning = true;
+            
+            // Hide idle message and show number container
+            idleMessage.style.display = 'none';
+            numberContainer.style.display = 'flex';
+            numberContainer.innerHTML = '';
+            winnerAnnouncement.style.opacity = 0;
+            
+            // Add all animation participants to the display
+            animationParticipants.forEach(phone => {
+                const numberElement = document.createElement('div');
+                numberElement.classList.add('phone-number');
+                numberElement.textContent = formatPhoneNumber(phone);
+                numberContainer.appendChild(numberElement);
+            });
+            
+            // Animation variables
+            const phoneElements = document.querySelectorAll('.phone-number');
+            const animationDuration = 5000; // 5 seconds
+            const steps = 30;
+            const stepDuration = animationDuration / steps;
+            
+            let currentStep = 0;
+            
+            // Animation interval
+            const animationInterval = setInterval(() => {
+                // Reset all numbers
+                phoneElements.forEach(el => {
+                    el.classList.remove('winner');
+                });
+                
+                // Highlight a random number during animation
+                if (currentStep < steps - 1) {
+                    const randomIndex = Math.floor(Math.random() * phoneElements.length);
+                    phoneElements[randomIndex].classList.add('winner');
+                    
+                    // Speed up the animation towards the end
+                    if (currentStep > steps / 2) {
+                        phoneElements[randomIndex].style.transition = `all ${0.3 - (currentStep / steps) * 0.2}s ease`;
+                    }
+                } 
+                // For the last step, highlight the winner(s)
+                else {
+                    clearInterval(animationInterval);
+                    
+                    // Clear all numbers from the display
+                    numberContainer.innerHTML = '';
+                    
+                    // Add winners to the display
+                    winners.forEach(winner => {
+                        const winnerElement = document.createElement('div');
+                        winnerElement.classList.add('phone-number', 'winner');
+                        winnerElement.textContent = formatPhoneNumber(winner);
+                        numberContainer.appendChild(winnerElement);
+                    });
+                    
+                    // Show winner announcement
+                    winnerAnnouncement.style.opacity = 1;
+                    
+                    // Show confetti
+                    createConfetti();
+                    
+                    // Reset animation flag after a delay
+                    setTimeout(() => {
+                        animationRunning = false;
+                    }, 10000);
+                }
+                
+                currentStep++;
+            }, stepDuration);
+        }
+        
+        // Format phone number for better readability: 09XXXXXXXXX to 09XX XXX XXXX
+        function formatPhoneNumber(phone) {
+            if (!phone || phone.length !== 11) return phone;
+            return `${phone.substring(0, 4)} ${phone.substring(4, 7)} ${phone.substring(7)}`;
+        }
+        
+        // Create and animate confetti
+        function createConfetti() {
+            confetti.style.display = 'block';
+            confetti.innerHTML = '';
+            
+            // Create confetti pieces
+            for (let i = 0; i < 100; i++) {
+                const piece = document.createElement('div');
+                piece.classList.add('confetti-piece');
+                
+                // Random position, color, and size
+                piece.style.left = `${Math.random() * 100}%`;
+                piece.style.width = `${5 + Math.random() * 10}px`;
+                piece.style.height = `${10 + Math.random() * 25}px`;
+                piece.style.background = getRandomColor();
+                piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+                
+                confetti.appendChild(piece);
+                
+                // Animate each confetti piece
+                anime({
+                    targets: piece,
+                    translateY: [
+                        {value: window.innerHeight * 1.1, duration: 1000 + Math.random() * 3000, easing: 'easeOutCubic'}
+                    ],
+                    translateX: [
+                        {value: -30 + Math.random() * 60, duration: 1000 + Math.random() * 3000, easing: 'easeOutCubic'}
+                    ],
+                    rotate: [
+                        {value: Math.random() * 360, duration: 1000 + Math.random() * 3000, easing: 'easeOutCubic'}
+                    ],
+                    opacity: [
+                        {value: 1, duration: 100, easing: 'linear'},
+                        {value: 0, duration: 1000, delay: 1000, easing: 'easeOutCubic'}
+                    ],
+                    delay: Math.random() * 1000
+                });
+            }
+            
+            // Hide confetti after animation
+            setTimeout(() => {
+                confetti.style.display = 'none';
+            }, 6000);
+        }
+        
+        // Generate random hex color
+        function getRandomColor() {
+            const colors = [
+                '#FFC700', '#FF3E4D', '#25C7D9', '#FFCA3A', '#8A79FF', 
+                '#FF7AAA', '#84F766', '#FF9900', '#36DBCA', '#BE8AFF'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // Toggle fullscreen
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+                fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم قرعه‌کشی</title>
+    <!-- Bootstrap RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.rtl.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Vazirmatn Font -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <style>
+        body {
+            font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .lottery-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 50px;
+        }
+        .title {
+            color: #343a40;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+        .fa-icon {
+            margin-left: 10px;
+        }
+        .participants-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .winner-display {
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        .winner-animation {
+            background-color: #198754;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10 lottery-container">
+                <h2 class="text-center title">
+                    <i class="fas fa-gift fa-icon"></i>
+                    سیستم قرعه‌کشی
+                </h2>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <i class="fas fa-file-excel fa-icon"></i>
+                                بارگذاری فایل شرکت‌کنندگان
+                            </div>
+                            <div class="card-body">
+                                <form id="uploadForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="excelFile" class="form-label">فایل حاوی شماره موبایل‌ها</label>
+                                        <input class="form-control" type="file" id="excelFile" accept=".xlsx,.xls,.csv">
+                                        <div class="form-text">فایل باید حاوی ستونی با عنوان شماره موبایل یا تلفن باشد (فرمت‌های Excel و CSV پشتیبانی می‌شوند).</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-upload fa-icon"></i>
+                                        بارگذاری
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <i class="fas fa-random fa-icon"></i>
+                                انجام قرعه‌کشی
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="winnerCount" class="form-label">تعداد برندگان</label>
+                                    <input type="number" class="form-control" id="winnerCount" min="1" value="1">
+                                </div>
+                                <button id="drawButton" class="btn btn-success mb-3">
+                                    <i class="fas fa-trophy fa-icon"></i>
+                                    انتخاب برنده
+                                </button>
+                                <button id="openDisplayButton" class="btn btn-info" onclick="window.open('/display', 'displayWindow', 'width=1024,height=768')">
+                                    <i class="fas fa-desktop fa-icon"></i>
+                                    نمایش صفحه نمایشگر
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <i class="fas fa-users fa-icon"></i>
+                                شرکت‌کنندگان (<span id="participantsCount">0</span> نفر)
+                            </div>
+                            <div class="card-body">
+                                <div class="participants-list" id="participantsList"></div>
+                                <div id="winnerDisplay" class="winner-display">
+                                    برنده: <span id="winnerNumber"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let participants = [];
+        let displayWindow = null;
+        
+        $(document).ready(function() {
+            // Load initial participants
+            loadParticipants();
+            
+            // Upload Excel file
+            $('#uploadForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const fileInput = $('#excelFile')[0];
+                if (fileInput.files.length === 0) {
+                    alert('لطفا یک فایل انتخاب کنید');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            participants = response.participants;
+                            updateParticipantsList();
+                            alert(response.message);
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            alert('خطا در بارگذاری فایل: ' + response.message);
+                        } catch (e) {
+                            alert('خطا در بارگذاری فایل');
+                        }
+                    }
+                });
+            });
+            
+            // Draw winner
+            $('#drawButton').on('click', function() {
+                const count = parseInt($('#winnerCount').val()) || 1;
+                
+                $.ajax({
+                    url: '/draw',
+                    type: 'POST',
+                    data: new URLSearchParams({ count: count }).toString(),
+                    contentType: 'application/x-www-form-urlencoded',
+                    success: function(response) {
+                        console.log("Draw response:", response);
+                        if (response.success) {
+                            const winners = response.winners;
+                            const animationParticipants = response.animation_participants;
+                            
+                            // Send data to display window if open
+                            if (displayWindow && !displayWindow.closed) {
+                                displayWindow.postMessage({
+                                    type: 'startDraw',
+                                    animationParticipants: animationParticipants,
+                                    winners: winners
+                                }, '*');
+                            }
+                            
+                            // Show winner in admin interface
+                            animateWinnerLocally(animationParticipants, winners);
+                        } else {
+                            alert(response.message || 'خطا در انجام قرعه‌کشی');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error("Draw error:", xhr);
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            alert('خطا در انجام قرعه‌کشی: ' + response.message);
+                        } catch (e) {
+                            alert('خطا در انجام قرعه‌کشی');
+                        }
+                    }
+                });
+            });
+            
+            // Open display window
+            $('#openDisplayButton').on('click', function() {
+                displayWindow = window.open('/display', 'displayWindow', 'width=1024,height=768');
+            });
+        });
+        
+        function loadParticipants() {
+            $.ajax({
+                url: '/participants',
+                type: 'GET',
+                success: function(response) {
+                    if (response.participants && response.participants.length > 0) {
+                        participants = response.participants;
+                        updateParticipantsList();
+                    }
+                }
+            });
+        }
+        
+        function updateParticipantsList() {
+            const $list = $('#participantsList');
+            $list.empty();
+            
+            participants.forEach(function(participant) {
+                $list.append(`<div class="participant-item">${participant}</div>`);
+            });
+            
+            $('#participantsCount').text(participants.length);
+        }
+        
+        function animateWinnerLocally(animationParticipants, winners) {
+            const $winnerDisplay = $('#winnerDisplay');
+            const $winnerNumber = $('#winnerNumber');
+            let count = 0;
+            const totalAnimations = 20;
+            
+            $winnerDisplay.show();
+            
+            const intervalId = setInterval(function() {
+                if (count < totalAnimations) {
+                    // Display random participants during animation
+                    const randomIndex = Math.floor(Math.random() * animationParticipants.length);
+                    $winnerNumber.text(animationParticipants[randomIndex]);
+                    count++;
+                } else {
+                    // Display winner
+                    clearInterval(intervalId);
+                    $winnerNumber.text(winners.join(' - '));
+                    $winnerDisplay.addClass('winner-animation');
+                    
+                    // Reset after 5 seconds
+                    setTimeout(function() {
+                        $winnerDisplay.removeClass('winner-animation');
+                    }, 5000);
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html> 
