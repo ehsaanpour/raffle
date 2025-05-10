@@ -76,10 +76,10 @@ http://localhost:8000
    - Draw winners
    - Open the display screen
 
-4. For the audience view:
+4. For the audience's view:
    - Click the "نمایش صفحه نمایشگر" button to open the display screen
    - Move this window to your second monitor
-   - Click the fullscreen button (bottom right) for best experience
+   - Click the fullscreen button (bottom right) for the best experience
 
 ## Creating a Sample CSV File
 
